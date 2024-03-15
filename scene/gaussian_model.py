@@ -517,6 +517,7 @@ class GaussianModel:
         self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation)
 
     def densify_and_prune(self, max_grad, min_opacity, extent, max_screen_size):
+        self.start_compute_offset = False
         grads = self.xyz_gradient_accum / self.denom
         grads[grads.isnan()] = 0.0
 
@@ -531,6 +532,7 @@ class GaussianModel:
         self.prune_points(prune_mask)
 
         torch.cuda.empty_cache()
+        self.start_compute_offset = True
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
         self.xyz_gradient_accum[update_filter] += torch.norm(viewspace_point_tensor.grad[update_filter,:2], dim=-1, keepdim=True)
