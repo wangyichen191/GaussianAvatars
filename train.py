@@ -171,10 +171,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                     losses['position_offset_regularization'] = l1_regularitation(gaussians.offset[:, :3]) * opt.position_offset_regularization
 
                 if opt.rotation_offset_regularization != 0:
-                    losses['rotation_offset_regularization'] = l1_regularitation(torch.reshape(gaussians.offset[:, 3:12], ((-1, 3, 3)))) * opt.rotation_offset_regularization
+                    losses['rotation_offset_regularization'] = l1_regularitation(gaussians.offset[:, 3:7]) * opt.rotation_offset_regularization
 
                 if opt.scaling_offset_regularization != 0:
-                    losses['scaling_offset_regularization'] = l1_regularitation(gaussians.offset[:, 12:]) * opt.scaling_offset_regularization
+                    losses['scaling_offset_regularization'] = l1_regularitation(gaussians.offset[:, 7:]) * opt.scaling_offset_regularization
         
         losses['total'] = sum([v for k, v in losses.items()])
         losses['total'].backward()

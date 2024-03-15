@@ -127,8 +127,8 @@ class GaussianModel:
     
             scaling = self.scaling_activation(self._scaling)
             scaling = scaling * self.face_scaling[self.binding.to(torch.int64)]
-            # if self.compute_offset:
-            #     scaling = scaling + self.offset[1]
+            if self.start_compute_offset:
+                scaling = scaling * torch.exp(self.offset[:, 7:])
             return scaling
     
     @property
@@ -137,15 +137,21 @@ class GaussianModel:
             return self.rotation_activation(self._rotation)
         else:
             # Toyota Motor Europe NV/SA and its affiliated companies retain all intellectual property and proprietary rights in and to the following code lines and related documentation. Any commercial use, reproduction, disclosure or distribution of these code lines and related documentation without an express license agreement from Toyota Motor Europe NV/SA is strictly prohibited.
-            if self.face_orien_quat is None:
+            if self.face_orien_quat is None:    
                 self.select_mesh_by_timestep(0)
 
             # always need to normalize the rotation quaternions before chaining them
             rot = self.rotation_activation(self._rotation)
-            # if self.compute_offset:
-            #     rot = rot + self.offset[2]
             face_orien_quat = self.rotation_activation(self.face_orien_quat[self.binding.to(torch.int64)])
-            return quat_xyzw_to_wxyz(quat_product(quat_wxyz_to_xyzw(rot), quat_wxyz_to_xyzw(face_orien_quat)))  # roma
+            # return quat_xyzw_to_wxyz(quat_product(quat_wxyz_to_xyzw(rot), quat_wxyz_to_xyzw(face_orien_quat)))  # roma
+            rot = quat_product(quat_wxyz_to_xyzw(rot), quat_wxyz_to_xyzw(face_orien_quat))
+            if self.start_compute_offset:
+                rot_delta_0 = self.offset[:, 3:7]
+                rot_delta_r = torch.exp(rot_delta_0[..., 0]).unsqueeze(-1)
+                rot_delta_v = rot_delta_0[..., 1:]
+                rot_delta = torch.cat((rot_delta_r, rot_delta_v), dim=-1)
+                rot = quat_product(rot, quat_wxyz_to_xyzw(rot_delta))
+            return quat_xyzw_to_wxyz(rot)
             # return quaternion_multiply(rot, face_orien_quat)  # pytorch3d
     
     @property
@@ -159,8 +165,8 @@ class GaussianModel:
             
             xyz = torch.bmm(self.face_orien_mat[self.binding.to(torch.int64)], self._xyz[..., None]).squeeze(-1)
             xyz = xyz * self.face_scaling[self.binding.to(torch.int64)] + self.face_center[self.binding.to(torch.int64)]
-            # if self.compute_offset:
-            #     xyz = xyz + self.offset[0]
+            if self.start_compute_offset:
+                xyz = xyz + self.offset[:, :3]
             return xyz
 
     @property

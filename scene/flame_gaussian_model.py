@@ -156,12 +156,12 @@ class FlameGaussianModel(GaussianModel):
             static_offset=flame_param['static_offset'],
             dynamic_offset=flame_param['dynamic_offset'][[timestep]],
         ) # (1, 5143, 3), (1, 5143, 3)
-        flame_params = torch.cat((flame_param['expr'][[timestep]],
-                                  flame_param['rotation'][[timestep]],
-                                  flame_param['neck_pose'][[timestep]],
-                                  flame_param['jaw_pose'][[timestep]],
-                                  flame_param['eyes_pose'][[timestep]]), dim=1)
-        # flame_params = flame_param['expr'][[timestep]]
+        # flame_params = torch.cat((flame_param['expr'][[timestep]],
+        #                           flame_param['rotation'][[timestep]],
+        #                           flame_param['neck_pose'][[timestep]],
+        #                           flame_param['jaw_pose'][[timestep]],
+        #                           flame_param['eyes_pose'][[timestep]]), dim=1)
+        flame_params = flame_param['expr'][[timestep]]
         self.update_mesh_properties(verts, verts_cano, flame_params)
     
     def update_mesh_properties(self, verts, verts_cano, flame_params):
@@ -180,13 +180,11 @@ class FlameGaussianModel(GaussianModel):
 
         # compute offset
         if self.start_compute_offset:
-            offset = self.deformNet(self.face_center_cano, flame_params).squeeze(0)
-            offset = torch.tanh(offset)
-            self.face_center += offset[:, :3]
-            self.face_orien_mat += torch.reshape(offset[:, 3:12], ((-1, 3, 3)))
-            self.face_scaling *= torch.exp(offset[:, 12:]) 
-            # self.face_orien_quat = quat_xyzw_to_wxyz(rotmat_to_unitquat(self.face_orien_mat))  # roma
-            self.offset = offset
+            cano_face_orien_mat, cano_face_scaling = compute_face_orientation(self.verts_cano_base.squeeze(0), faces.squeeze(0), return_scale=True)
+            xyz = torch.bmm(cano_face_orien_mat[self.binding.to(torch.int64)], self._xyz[..., None]).squeeze(-1)
+            xyz = xyz * cano_face_scaling[self.binding.to(torch.int64)] + self.face_center_cano.squeeze(0)[self.binding.to(torch.int64)]
+            offset = self.deformNet(xyz.unsqueeze(0), flame_params).squeeze(0)
+            self.offset = torch.tanh(offset)
 
         # for mesh rendering
         self.verts = verts
