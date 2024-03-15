@@ -156,12 +156,12 @@ class FlameGaussianModel(GaussianModel):
             static_offset=flame_param['static_offset'],
             dynamic_offset=flame_param['dynamic_offset'][[timestep]],
         ) # (1, 5143, 3), (1, 5143, 3)
-        # flame_params = torch.cat((flame_param['expr'][[timestep]],
-        #                           flame_param['rotation'][[timestep]],
-        #                           flame_param['neck_pose'][[timestep]],
-        #                           flame_param['jaw_pose'][[timestep]],
-        #                           flame_param['eyes_pose'][[timestep]]), dim=1)
-        flame_params = flame_param['expr'][[timestep]]
+        flame_params = torch.cat((flame_param['expr'][[timestep]],
+                                  flame_param['rotation'][[timestep]],
+                                  flame_param['neck_pose'][[timestep]],
+                                  flame_param['jaw_pose'][[timestep]],
+                                  flame_param['eyes_pose'][[timestep]]), dim=1)
+        # flame_params = flame_param['expr'][[timestep]]
         self.update_mesh_properties(verts, verts_cano, flame_params)
     
     def update_mesh_properties(self, verts, verts_cano, flame_params):

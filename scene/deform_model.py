@@ -17,7 +17,7 @@ class Deform_Model(nn.Module):
         self.pts_embedder = Embedder(self.pts_freq)
 
         self.deformNet = MLP(
-            input_dim=self.pts_embedder.dim_embeded+100,
+            input_dim=self.pts_embedder.dim_embeded+115,
             output_dim=13,
             hidden_dim=256,
             hidden_layers=6
