@@ -1,0 +1,1 @@
+python local_viewer.py --point_path /data2/wangyichen/GaussianAvatars/output/UNION10EMOEXP_218_addoffset_eval_600k/point_cloud/iteration_60000/point_cloud.ply
