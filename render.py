@@ -21,6 +21,7 @@ from pathlib import Path
 from tqdm import tqdm
 from PIL import Image
 import numpy as np
+from glob import glob
 
 from gaussian_renderer import render
 from utils.general_utils import safe_state
@@ -67,9 +68,13 @@ def render_set(dataset : ModelParams, name, iteration, views, gaussians, pipelin
     max_threads = multiprocessing.cpu_count()
     print('Max threads: ', max_threads)
     worker_args = []
-    for idx, view in enumerate(tqdm(views_loader, desc="Rendering progress")):
+    obj_path = "/data2/wangyichen/GaussianAvatars/mesh_dir/leijun-ict/meshes"
+    mesh_paths=sorted(glob(os.path.join(obj_path, '*.obj')))
+    for _, view in enumerate(tqdm(views_loader, desc="Rendering progress")):
+        break
+    for idx, mesh_path in enumerate(tqdm(mesh_paths, desc="Rendering progress")):
         if gaussians.binding != None:
-            gaussians.select_mesh_by_timestep(view.timestep)
+            gaussians.select_mesh_by_timestep(view.timestep, mesh_path=mesh_path)
         rendering = render(view, gaussians, pipeline, background)["render"]
         gt = view.original_image[0:3, :, :]
         if render_mesh:
@@ -87,7 +92,7 @@ def render_set(dataset : ModelParams, name, iteration, views, gaussians, pipelin
             path2data[Path(render_mesh_path) / f'{idx:05d}.png'] = rendering_mesh
         worker_args.append([path2data])
 
-        if len(worker_args) == max_threads or idx == len(views_loader)-1:
+        if len(worker_args) == max_threads or idx == len(mesh_paths)-1:
             with concurrent.futures.ThreadPoolExecutor(max_threads) as executor:
                 futures = [executor.submit(write_data, *args) for args in worker_args]
                 concurrent.futures.wait(futures)
