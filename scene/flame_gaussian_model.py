@@ -17,6 +17,7 @@ from .deform_model import Deform_Model
 from utils.graphics_utils import compute_face_orientation
 # from pytorch3d.transforms import matrix_to_quaternion
 from roma import rotmat_to_unitquat, quat_xyzw_to_wxyz
+import trimesh
 
 
 class FlameGaussianModel(GaussianModel):
@@ -32,7 +33,7 @@ class FlameGaussianModel(GaussianModel):
         self.flame_model = FlameHead(
             n_shape, 
             n_expr,
-            add_teeth=True,
+            add_teeth=False,
         ).cuda()
         self.flame_param = None
         self.flame_param_orig = None
@@ -139,9 +140,10 @@ class FlameGaussianModel(GaussianModel):
         self.update_mesh_properties(verts, verts_cano)
 
     def select_mesh_by_timestep(self, timestep, original=False):
+        # timestep = 0
         self.timestep = timestep
         flame_param = self.flame_param_orig if original and self.flame_param_orig != None else self.flame_param
-
+        # flame_param['jaw_pose'][timestep][0] = 0.03
         verts, verts_cano = self.flame_model(
             flame_param['shape'][None, ...],
             flame_param['expr'][[timestep]],
@@ -153,7 +155,7 @@ class FlameGaussianModel(GaussianModel):
             zero_centered_at_root_node=False,
             return_landmarks=False,
             return_verts_cano=True,
-            static_offset=flame_param['static_offset'],
+            static_offset=flame_param['static_offset'][0:5023],
             dynamic_offset=flame_param['dynamic_offset'][[timestep]],
         ) # (1, 5143, 3), (1, 5143, 3)
         # flame_params = torch.cat((flame_param['expr'][[timestep]],
@@ -161,6 +163,11 @@ class FlameGaussianModel(GaussianModel):
         #                           flame_param['neck_pose'][[timestep]],
         #                           flame_param['jaw_pose'][[timestep]],
         #                           flame_param['eyes_pose'][[timestep]]), dim=1)
+        # v = verts.squeeze(0).cpu().numpy()
+        # f = self.flame_model.faces.cpu().numpy()
+        # mesh = trimesh.Trimesh(vertices=v, faces=f)
+        # mesh.export("/data2/wangyichen/GaussianAvatars/mesh/output.obj")
+        # raise NameError
         flame_params = flame_param['expr'][[timestep]]
         self.update_mesh_properties(verts, verts_cano, flame_params)
     
