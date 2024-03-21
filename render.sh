@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=3 python render.py -m output/GaussianOffset_smallFLame_lowerRegular_302 --skip_test --skip_val --select_camera_id 6 --iteration 120000 --use_offset
+CUDA_VISIBLE_DEVICES=0 python render.py -m output/302_woFinetune --skip_test --skip_val --select_camera_id 6 --iteration 120000
