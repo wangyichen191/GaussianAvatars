@@ -10,9 +10,9 @@
 #
 
 from tqdm import tqdm
-from scene.cameras import Camera
+from scene.cameras import Camera, Camera_IMAvatar
 import numpy as np
-from utils.general_utils import PILtoTorch
+from utils.general_utils import PILtoTorch, numpyToTorch
 from utils.graphics_utils import fov2focal
 
 WARNED = False
@@ -67,6 +67,24 @@ def cameraList_from_camInfos(cam_infos, resolution_scale, args):
         camera_list.append(loadCam(args, id, c, resolution_scale))
 
     return camera_list
+
+def cameraList_from_camInfosExt(cam_infos, resolution_scale, args):
+    camera_list = []
+
+    for id, cam_info in tqdm(enumerate(cam_infos), total=len(cam_infos)):
+        # orig_h, orig_w = cam_info.image.shape[:2]
+        # resolution = round(orig_w), round(orig_h)
+        # resized_image_rgb = numpyToTorch(cam_info.image, resolution)
+        # loaded_mask = None
+        # if resized_image_rgb.shape[0] == 4:
+        #     loaded_mask = resized_image_rgb[3:4, ...]
+        cam = Camera_IMAvatar(colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T, bg=cam_info.bg,
+                      w=cam_info.width, h=cam_info.height, fx=cam_info.fx, fy=cam_info.fy, cx=cam_info.cx, cy=cam_info.cy,
+                      image_path=cam_info.image_path,
+                      image_name=cam_info.image_name, timestep=cam_info.timestep, uid=id, data_device='cpu')
+        camera_list.append(cam)
+    return camera_list
+        
 
 def camera_to_JSON(id, camera : Camera):
     Rt = np.zeros((4, 4))

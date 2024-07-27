@@ -23,6 +23,7 @@ from pathlib import Path
 from plyfile import PlyData, PlyElement
 from utils.sh_utils import SH2RGB
 from scene.gaussian_model import BasicPointCloud
+import cv2
 
 class CameraInfo(NamedTuple):
     uid: int
@@ -38,6 +39,23 @@ class CameraInfo(NamedTuple):
     height: int
     timestep: Optional[int]
     camera_id: Optional[int]
+
+class CameraInfoExt(NamedTuple):
+    uid: int
+    R: np.array
+    T: np.array
+    bg: np.array
+    # image :np.array
+    image_path: str
+    image_name: str
+    width: int
+    height: int
+    fx: float
+    fy: float
+    cx: float
+    cy: float
+    timestep: int
+    camera_id: int
 
 class SceneInfo(NamedTuple):
     train_cameras: list
@@ -290,6 +308,25 @@ def readMeshesFromTransforms(path, transformsfile):
             mesh_infos[frame["timestep_index"]] = flame_param
     return mesh_infos
 
+def readMeshesFromTransforms_IMAvatar(path, transformsfile):
+    with open(os.path.join(path, transformsfile)) as json_file:
+        contents = json.load(json_file)
+        frames = contents["frames"]
+        shape = contents["shape_params"]
+        mesh_infos = {}
+        for idx, frame in tqdm(enumerate(frames), total=len(frames)):
+            flame_param = {
+                "shape": np.array(shape),
+                "expr": np.expand_dims(np.array(frame['expression']), axis=0),
+                "rotation": np.expand_dims(np.array(frame['pose'][0:3]), axis=0),
+                "neck_pose": np.expand_dims(np.array(frame['pose'][3:6]), axis=0),
+                "jaw_pose": np.expand_dims(np.array(frame['pose'][6:9]), axis=0),
+                "eyes_pose": np.expand_dims(np.array(frame['pose'][9:15]), axis=0)
+            }
+            timestep = idx
+            mesh_infos[timestep] = flame_param
+    return mesh_infos
+ 
 def readDynamicNerfInfo(path, white_background, eval, extension=".png", target_path=""):
     print("Reading Training Transforms")
     if target_path != "": 
@@ -355,10 +392,95 @@ def readDynamicNerfInfo(path, white_background, eval, extension=".png", target_p
                            test_meshes=test_mesh_infos,
                            tgt_train_meshes=tgt_train_mesh_infos,
                            tgt_test_meshes=tgt_test_mesh_infos)
+
+    return scene_info
+
+def readCamerasFromTransforms_IMAvatar(path, transformsfile, white_background, extension=".png"):
+    cam_infos = []
+
+    with open(os.path.join(path, transformsfile)) as json_file:
+        contents = json.load(json_file)
+        frames = contents["frames"]
+        intrinsics = contents['intrinsics']
+        for idx, frame in tqdm(enumerate(frames), total=len(frames)):
+            file_path = frame["file_path"]
+            if extension not in frame["file_path"]:
+                file_path += extension
+            image_path = os.path.join(path, file_path)
+
+            w2c = np.array(frame['world_mat'])
+            w2c = np.concatenate([w2c, np.array([[0, 0, 0, 1]])], axis=0)
+            R = w2c[:3,:3]
+            T = w2c[:3, 3]
+            R[1:, :] = -R[1:, :]
+            T[1:] = -T[1:]
+
+            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+            # image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+            height, width = image.shape[:2]
+            fx = abs(width * intrinsics[0])
+            fy = abs(height * intrinsics[1])
+            cx = abs(width * intrinsics[2])
+            cy = abs(height * intrinsics[3])
+
+            c = -R.transpose().dot(T)
+            c = c[:, None]
+            R_inv = np.linalg.inv(R)
+            c2w = np.concatenate([np.concatenate([R_inv, c], axis=1), np.array([[0, 0, 0, 1]])])
+            w2c = np.linalg.inv(c2w)
+            R = np.transpose(w2c)[:3, :3]
+            T = w2c[:3, 3]
+
+            image_name = os.path.basename(image_path)
+            timestep = int(image_name[:-4]) - 1
+
+            bg = np.array([1,1,1]) if white_background else np.array([0, 0, 0])
+            
+            cam_infos.append(CameraInfoExt(
+                uid=idx, R=R, T=T, bg=bg,
+                image_path=image_path, image_name=image_name, 
+                width=width, height=height, 
+                fx=fx, fy=fy, cx=cx, cy=cy,
+                timestep=timestep, camera_id=0))
+    return cam_infos
+
+
+def readIMAvatarInfo(path, white_background, eval, extension=".png", target_path=""):
+    print("Reading Training Transforms")
+    if target_path != "": 
+        train_cam_infos = readCamerasFromTransforms_IMAvatar(target_path, "flame_params.json", white_background, extension)
+    else:
+        train_cam_infos = readCamerasFromTransforms_IMAvatar(path, "flame_params.json", white_background, extension)
+
+    print("Reading Training Meshes")
+    train_mesh_infos = readMeshesFromTransforms_IMAvatar(path, "flame_params.json")
+    
+    # print("Reading Test Transforms")
+    # if target_path != "":
+    #     test_cam_infos = readCamerasFromTransforms_IMAvatar(target_path, "flame_params.json", white_background, extension)
+    # else:
+    #     test_cam_infos = readCamerasFromTransforms_IMAvatar(path, "flame_params.json", white_background, extension)
+
+    # print("Reading Test Meshes")
+    # test_mesh_infos = readMeshesFromTransforms_IMAvatar(path, "flame_params.json")
+
+    nerf_normalization = getNerfppNorm(train_cam_infos)
+
+    scene_info = SceneInfo(point_cloud=None,
+                           train_cameras=train_cam_infos,
+                           val_cameras={},
+                           test_cameras={},
+                           nerf_normalization=nerf_normalization,
+                           ply_path=None,
+                           train_meshes=train_mesh_infos,
+                           test_meshes={},
+                           tgt_train_meshes={},
+                           tgt_test_meshes={})
     return scene_info
 
 sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo,
     "DynamicNerf" : readDynamicNerfInfo,
     "Blender" : readNerfSyntheticInfo,
+    "IMAvatar": readIMAvatarInfo
 }

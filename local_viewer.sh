@@ -1,1 +1,1 @@
-python local_viewer.py --point_path /data2/wangyichen/GaussianAvatars/output/UNION10EMOEXP_218_addoffset_eval_600k/point_cloud/iteration_60000/point_cloud.ply
+CUDA_VISIBLE_DEVICES=4 python local_viewer.py --point_path /data2/wangyichen/server_149/GaussianFaceReconstructionServer/TMP_DIR/80550_149.ply

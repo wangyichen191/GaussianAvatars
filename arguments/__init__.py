@@ -56,7 +56,7 @@ class ModelParams(ParamGroup):
         self.data_device = "cuda"
         self.eval = False
         self.bind_to_mesh = False
-        self.disable_flame_static_offset = False
+        self.disable_flame_static_offset = True
         self.not_finetune_flame_params = False
         self.select_camera_id = -1
         super().__init__(parser, "Loading Parameters", sentinel)
@@ -91,10 +91,16 @@ class OptimizationParams(ParamGroup):
         self.densify_until_iter = 120_000  # 15_000 (original)
         self.densify_grad_threshold = 0.0002
 
+        # self.densification_interval = 1_000  # 100 (original)
+        # self.opacity_reset_interval = 1_000 # 3000 (original)
+        # self.densify_from_iter = 100  # 500 (original)
+        # self.densify_until_iter = 120_000  # 15_000 (original)
+        # self.densify_grad_threshold = 0.0002
+
         # MLP
         self.mlp_lr = 1e-5
 
-        self.image_save_interval = 1000
+        self.image_save_interval = 500
         
         # GaussianAvatars
         self.flame_expr_lr = 1e-3

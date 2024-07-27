@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=0 python render.py -m output/302_woFinetune --skip_test --skip_val --select_camera_id 6 --iteration 120000
+CUDA_VISIBLE_DEVICES=4 python render.py -m output/yufeng_test --skip_test --skip_val --select_camera_id 6 --iteration 120000

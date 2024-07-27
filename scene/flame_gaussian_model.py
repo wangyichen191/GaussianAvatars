@@ -20,19 +20,20 @@ from roma import rotmat_to_unitquat, quat_xyzw_to_wxyz
 
 
 class FlameGaussianModel(GaussianModel):
-    def __init__(self, sh_degree : int, disable_flame_static_offset=False, not_finetune_flame_params=False, n_shape=300, n_expr=100):
+    def __init__(self, sh_degree : int, disable_flame_static_offset=False, not_finetune_flame_params=False, n_shape=100, n_expr=50):
         super().__init__(sh_degree)
 
         self.disable_flame_static_offset = disable_flame_static_offset
         self.not_finetune_flame_params = not_finetune_flame_params
         self.n_shape = n_shape
         self.n_expr = n_expr
-        self.default_expr = torch.zeros(1, 100).cuda()
+        self.default_expr = torch.zeros(1, n_expr).cuda()
 
         self.flame_model = FlameHead(
             n_shape, 
             n_expr,
             add_teeth=True,
+            factor=4
         ).cuda()
         self.flame_param = None
         self.flame_param_orig = None
@@ -81,7 +82,7 @@ class FlameGaussianModel(GaussianModel):
                 self.flame_param['neck_pose'][i] = torch.from_numpy(mesh['neck_pose'])
                 self.flame_param['jaw_pose'][i] = torch.from_numpy(mesh['jaw_pose'])
                 self.flame_param['eyes_pose'][i] = torch.from_numpy(mesh['eyes_pose'])
-                self.flame_param['translation'][i] = torch.from_numpy(mesh['translation'])
+                # self.flame_param['translation'][i] = torch.from_numpy(mesh['translation'])
                 # self.flame_param['dynamic_offset'][i] = torch.from_numpy(mesh['dynamic_offset'])
             
             for k, v in self.flame_param.items():

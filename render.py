@@ -105,7 +105,7 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
     with torch.no_grad():
         if dataset.bind_to_mesh:
             # gaussians = FlameGaussianModel(dataset.sh_degree, dataset.disable_flame_static_offset)
-            gaussians = FlameGaussianModel(dataset.sh_degree)
+            gaussians = FlameGaussianModel(dataset.sh_degree, dataset.disable_flame_static_offset)
         else:
             gaussians = GaussianModel(dataset.sh_degree)
 
